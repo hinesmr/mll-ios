@@ -1,4 +1,4 @@
-mica-ios
+mll-ios
 ========
 
-MICA Reader: A the mobile version of MICA for iOS: A Chinese Learning system
+Read Alien: Meta-Language Learning for iPad / iOS (http://readalien.com)
