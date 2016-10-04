@@ -33,7 +33,7 @@
     return YES;
 }
 
-- (NSUInteger) supportedInterfaceOrientations {
+- (UIInterfaceOrientationMask) supportedInterfaceOrientations {
     //NSLog(@"supportedInterfaceOrientations was called.");
     return UIInterfaceOrientationMaskAll;
     //return UIInterfaceOrientationMaskAllButUpsideDown;
