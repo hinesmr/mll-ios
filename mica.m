@@ -1,3 +1,10 @@
+//
+//  mica.m
+//  reader 
+//
+//  Created by Michael R. Hines on 8/13/14.
+//
+//
 #import <Foundation/Foundation.h>
 #import <CouchbaseLite/CouchbaseLite.h>
 #import <CouchbaseLiteListener/CBLListener.h>
@@ -6,6 +13,7 @@
 #include <string.h>
 
 #import "mica.h"
+#import "main.h"
 
 
 @implementation MyViewController {
@@ -16,24 +24,24 @@
 }
 
 - (BOOL)prefersStatusBarHidden {
-    NSLog(@"preferStatusBarHidden was called.");
+    //NSLog(@"preferStatusBarHidden was called.");
     return YES;
 }
 
 - (BOOL) shouldAutorotate {
-    NSLog(@"shouldAutorotate was called.");
+    //NSLog(@"shouldAutorotate was called.");
     return YES;
 }
 
 - (NSUInteger) supportedInterfaceOrientations {
-    NSLog(@"supportedInterfaceOrientations was called.");
+    //NSLog(@"supportedInterfaceOrientations was called.");
     return UIInterfaceOrientationMaskAll;
     //return UIInterfaceOrientationMaskAllButUpsideDown;
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
-  NSLog(@"shouldAutorotateToInterfaceOrientation was called.");
+    //NSLog(@"shouldAutorotateToInterfaceOrientation was called.");
     return YES;
 }
 /*
@@ -121,6 +129,7 @@
     NSMutableDictionary * seeds;
     NSMutableDictionary * mappers;
     NSMutableDictionary * reducers;
+    NSString * maindb;
 
     UIWindow * window;
     UIWebView * webview;
@@ -137,6 +146,7 @@
         self->window = nil;
         self->webview = nil;
 	self->listener = nil;
+        self->maindb = nil;
         //NSLog(@"mica bridge class initialized.");
         self->dbs = [[NSMutableDictionary alloc] init];
         self->pushes = [[NSMutableDictionary alloc] init];
@@ -527,11 +537,14 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 
 - (int)start: (NSString *) dbname
 {
+    AppDelegate * appDelegate = [[UIApplication sharedApplication] delegate];
     CBLDatabase *db = [self->dbs valueForKey: dbname];
     if (db != nil) {
         NSLog(@"Started: db %@ already opened.", dbname);
         return -1;
     }
+
+    NSLog(@"Starting db %@", dbname);
 
     NSError * error;
     db = [[CBLManager sharedInstance] databaseNamed:dbname error: &error];
@@ -548,13 +561,25 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     NSString *version = @"14";
 
     for (NSString* key in self->mappers) {
-        NSLog(@"Installing native mapreduce for: %@", key);	
+        //NSLog(@"Installing native mapreduce for: %@", key);	
 	CBLReduceBlock reducer = [self->reducers objectForKey:key];
 	CBLMapBlock mapper = [self->mappers objectForKey:key];
         [[db viewNamed: key] setMapBlock:mapper reduceBlock: reducer version: version];
     }
 
-    return 0;
+   appDelegate.couch = self;
+
+   NSLog(@"Start complete db %@", dbname);
+
+   if (appDelegate.token != nil && ![dbname isEqualToString: @"files"] && ![dbname isEqualToString:@"sessiondb"]) {
+       NSLog(@"We found a token: %@. Registering...", appDelegate.token);
+       self->maindb = dbname;
+       [self _storePushToken : self->maindb];
+   } else {
+       NSLog(@"Skipping DB token check: %@ %@", appDelegate.token, dbname);
+   }
+
+   return 0;
 }
 
 + (NSDictionary *) _get:(CBLDatabase *) db key: (NSString*)key
@@ -570,6 +595,66 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 
     return props;
 }
+
+- (void) _storePushToken: (NSString *) dbname 
+{
+    DBCHECK();
+    AppDelegate * appDelegate = [[UIApplication sharedApplication] delegate];
+//    NSLog(@"We successfully reached view controller. Ready to store token");
+
+#if !TOKEN_ENV_SANDBOX
+    NSString * which = @"apns_dist";
+//    NSLog(@"TOKEN_ENV==PRODUCTION");
+#endif
+
+#if TOKEN_ENV_SANDBOX
+    NSString * which = @"apns_dev";
+//    NSLog(@"TOKEN_ENV==SANDBOX");
+#endif
+
+    NSDictionary *tmpprops = [mica _get : db key: @"MICA:push_tokens"];
+    NSDictionary *props;
+    BOOL found = NO;
+
+    if (tmpprops == nil) {
+        //NSLog(@"Push document doesn't exist. Creating a new one");
+        props = @{
+	    @"gcm" : [[NSMutableArray alloc] init],
+	    @"apns_dev" : [[NSMutableArray alloc] init], 
+	    @"apns_dist" : [[NSMutableArray alloc] init],
+	};
+    } else {
+        props = [tmpprops mutableCopy];
+        [props setValue:[[props valueForKey:which ] mutableCopy] forKey:which];
+    }
+
+    NSMutableArray * tokens = [props valueForKey:which];
+    for (NSString * tok in tokens) {
+        if ([tok isEqualToString: appDelegate.token]) {
+            found = YES;
+            break;
+        }
+    }
+
+    if(found == NO) {
+       NSError * error;
+       [tokens addObject:appDelegate.token];
+       NSLog(@"Token not found: Appending: %@", [mica toString:props]);
+       CBLDocument *doc = [db documentWithID:@"MICA:push_tokens"];
+       if (![doc putProperties:props error:&error]) {
+           NSLog(@"Failed to push tokens into DB: %@", error);
+       }
+    }
+    //NSLog(@"Token storage complete.");
+}
+
+- (void) storePushToken
+{
+  if (self->maindb != nil) {
+      [self _storePushToken : self->maindb];
+  }
+}
+
 
 - (NSString *) doc_exist: (NSString *) dbname :(NSString *) key
 {
@@ -910,6 +995,7 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     //NSLog(@"Replication started : %@ <==> db %@", server, dbname);
     return 0;
 }
+
 
 - (void) runloop
 {

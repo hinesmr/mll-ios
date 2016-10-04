@@ -30,7 +30,7 @@ except ImportError, e :
 
 cwd = re.compile(".*\/").search(os.path.realpath(__file__)).group(0)
 sys.path = [cwd, cwd + "mica/"] + sys.path
-print "Path is: " + str(sys.path)
+#print "Path is: " + str(sys.path)
 
 print "Loading initial parameters"
 from params import parameters

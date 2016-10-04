@@ -19,11 +19,12 @@
 #define reader_mica_h
 
 
-@interface MyViewController :UIViewController
+@interface MyViewController : UIViewController
 @end
 
 @interface mica : NSObject;
 - (void) updateReplication: (CBLReplication *)event : (NSString *) type;
+- (void) storePushToken;
 @end
 
 typedef enum : NSInteger {
