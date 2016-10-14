@@ -501,7 +501,7 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 	    NSLog(@"Failed to start listener.");
 	    return -1;
 	}
-	self->listener.readOnly = YES;
+	//self->listener.readOnly = YES;
 	self->listener.passwords = @{user : pass};
 	if (![self->listener start: &error]) {
 	    NSLog(@"Failed to start HTTP listener: %@", error.localizedDescription);
@@ -1009,13 +1009,29 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     AppDelegate * appDelegate = [[UIApplication sharedApplication] delegate];
     NSTimeInterval MY_EXTRA_TIME = 0.1; // 100 milliseconds
     NSDate *futureDate = [[NSDate date] dateByAddingTimeInterval:MY_EXTRA_TIME];
+    NSError * error;
+
     [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:futureDate];
+
     //NSLog(@"ios Runloop returning");
     if ([appDelegate.stop_now isEqualToString:@"yes"]) {
         appDelegate.stop_now = @"no";
+        if (self->listener != nil) {
+            NSLog(@"Stopping HTTP listener.");
+            [self->listener stop];
+            NSLog(@"Stopped.");
+        }
         return 1;
     } else if ([appDelegate.start_now isEqualToString:@"yes"]) {
         appDelegate.start_now = @"no";
+        if (self->listener != nil) {
+            NSLog(@"Starting HTTP listener.");
+	    if ([self->listener start: &error]) {
+                NSLog(@"Successfully restarted listener.");   
+            } else {
+	        NSLog(@"Failed to start HTTP listener: %@", error.localizedDescription);
+	    }
+	}
         return 2;
     }
     return 0;

@@ -8,7 +8,7 @@ cwd = re.compile(".*\/").search(os.path.realpath(__file__)).group(0)
 parameters = {
            "port" : 10000,
            "sslport" : -1,
-           "host" : "0.0.0.0",
+           "host" : "127.0.0.1",
            "keepsession" : True,
            "debug_host" : False,
            "log" : False,
