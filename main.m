@@ -20,7 +20,8 @@ void load_custom_builtin_importer();
 #endif
 
 int main(int argc, char *argv[]) {
-    //NSLog(@"Application starting up.");
+    NSLog(@"Application starting up.");
+    //setenv("CFNETWORK_DIAGNOSTICS", "2", 1);
     @autoreleasepool {
         return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
     }
@@ -40,6 +41,11 @@ void run_python() {
     putenv("PYTHONPATH=.");
     //putenv("PYTHONVERBOSE=1");
     
+    if(Py_IsInitialized()) {
+        NSLog(@"Python was initialized previously. Cleaning it up before restart.");
+        Py_Finalize();
+    }
+
     NSString * resourcePath = [[NSBundle mainBundle] resourcePath];
     //NSLog(@"PythonHome is: %s", (char *)[resourcePath UTF8String]);
     Py_SetPythonHome((char *)[resourcePath UTF8String]);
@@ -71,6 +77,8 @@ void run_python() {
         ret = PyRun_SimpleFileEx(fd, prog, 1);
         if (ret != 0)
             NSLog(@"Application quit abnormally!");
+        else
+            NSLog(@"Normal Application exit");
     }
     
     Py_Finalize();
@@ -127,9 +135,10 @@ void load_custom_builtin_importer() {
 
 - (void) python_thread {
 
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     run_python();
-    [pool release];
+    NSLog(@"Python is ending now...");
+    //[pool release];
 }
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
@@ -137,6 +146,8 @@ void load_custom_builtin_importer() {
 
     NSLog(@"Did finish launching called.");
     self.token = nil; 
+    self.stop_now = @"no";
+    self.start_now = @"no";
     UIUserNotificationType types = UIUserNotificationTypeBadge |
                  UIUserNotificationTypeSound | UIUserNotificationTypeAlert;
     UIUserNotificationSettings *mySettings =
@@ -151,16 +162,21 @@ void load_custom_builtin_importer() {
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
     // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+    self.stop_now = @"yes";
+    NSLog(@"We will go to inactive, now...");
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+    NSLog(@"We backgrounded!");
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application
 {
+    NSLog(@"We're about to enter the foreground.....");
+    self.start_now = @"yes";
     // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
 }
 
@@ -168,11 +184,13 @@ void load_custom_builtin_importer() {
 {
     [application cancelAllLocalNotifications];
     application.applicationIconBadgeNumber = 0;
+    NSLog(@"We're active now....");
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application
 {
-    // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+    NSLog(@"We're about to background.............");
+    
 }
 
 - (void)application:(UIApplication *)application didRegisterUserNotificationSettings:(UIUserNotificationSettings *)notificationSettings
@@ -187,7 +205,6 @@ void load_custom_builtin_importer() {
     }    
 }
 
-/* THESE ARE BEING CALLED TOO LATE. Need to save token some how and pick it up later when couch is ready. */
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
     const unsigned *tokenBytes = [deviceToken bytes];
     NSString *stringToken = [NSString stringWithFormat:@"%08x%08x%08x%08x%08x%08x%08x%08x",
@@ -202,6 +219,5 @@ void load_custom_builtin_importer() {
 - (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
     NSLog(@"Failed to register for remote notifications: %@, %@", error, error.localizedDescription);
 }
-
 
 @end

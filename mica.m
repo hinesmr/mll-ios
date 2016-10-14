@@ -9,6 +9,7 @@
 #import <CouchbaseLite/CouchbaseLite.h>
 #import <CouchbaseLiteListener/CBLListener.h>
 #import <CouchbaseLite/CBLView.h>
+#import <WebKit/WebKit.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +19,7 @@
 
 @implementation MyViewController {
     UIWindow * window;
-    UIWebView * webview;
+    WKWebView * webview;
     CGFloat width;
     CGFloat height;
 }
@@ -104,7 +105,7 @@
 }
 */
 
-- (void) setWebView :(UIWebView *) wv
+- (void) setWebView :(WKWebView *) wv
 {
     self->webview = wv;
     UIInterfaceOrientation interfaceOrientation = [[UIApplication sharedApplication] statusBarOrientation];
@@ -116,7 +117,7 @@
 	    self->height = wv.frame.size.height;
     }
     self->webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self->webview.scalesPageToFit = YES;
+    //self->webview.scalesPageToFit = YES;
 }
 @end
 
@@ -132,7 +133,7 @@
     NSString * maindb;
 
     UIWindow * window;
-    UIWebView * webview;
+    WKWebView * webview;
     double pull_percent;
     double push_percent;
     Reachability *reachability;
@@ -361,7 +362,7 @@
 	    NSLog(@"Creating static webview splash.");
 	    self->window.backgroundColor = [UIColor whiteColor];
 	    [self->window makeKeyAndVisible];
-	    self->webview = [[UIWebView alloc] initWithFrame: self->window.bounds];
+	    self->webview = [[WKWebView alloc] initWithFrame: self->window.bounds];
 	    MyViewController *vc = [[MyViewController alloc] init];
             [vc setWebView:self->webview];
 	    [self->webview loadHTMLString:html baseURL:nil];
@@ -384,7 +385,7 @@
 	    [self->window makeKeyAndVisible];
 	    NSURL * url = [NSURL URLWithString:fullURL];
 	    NSURLRequest * requestObj = [NSURLRequest requestWithURL:url];
-	    self->webview = [[UIWebView alloc] initWithFrame: self->window.bounds];
+	    self->webview = [[WKWebView alloc] initWithFrame: self->window.bounds];
 	    //self->webview.scalesPageToFit = YES;
 	    MyViewController *vc = [[MyViewController alloc] init];
             [vc setWebView:self->webview];
@@ -909,7 +910,12 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 - (void) updateView: (NSString *) js
 {
     [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-	[self->webview stringByEvaluatingJavaScriptFromString:js];
+	[self->webview evaluateJavaScript:js completionHandler:^(NSString *result, NSError *error)
+	    {
+		NSLog(@"Error %@",error);
+		NSLog(@"Result %@",result);
+
+	    }];
     }];
 }
 
@@ -997,13 +1003,22 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 }
 
 
-- (void) runloop
+- (int) runloop
 {
     //NSLog(@"ios Runloop wants to check for work to do.");
+    AppDelegate * appDelegate = [[UIApplication sharedApplication] delegate];
     NSTimeInterval MY_EXTRA_TIME = 0.1; // 100 milliseconds
     NSDate *futureDate = [[NSDate date] dateByAddingTimeInterval:MY_EXTRA_TIME];
     [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:futureDate];
     //NSLog(@"ios Runloop returning");
+    if ([appDelegate.stop_now isEqualToString:@"yes"]) {
+        appDelegate.stop_now = @"no";
+        return 1;
+    } else if ([appDelegate.start_now isEqualToString:@"yes"]) {
+        appDelegate.start_now = @"no";
+        return 2;
+    }
+    return 0;
 }
 
 - (void) view_seed :(NSString *) uuid :(NSString *) username :(NSString *) key_value
@@ -1036,7 +1051,7 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
 {
     DBCHECK();
     NSError * error;
-    NSLog(@"Compacting db %@...", dbname);
+    //NSLog(@"Compacting db %@...", dbname);
     if (![db compact: &error]) {
         FINISH(error.localizedDescription, @"Compaction failed for db %@: %@", dbname, error.localizedDescription);
     }

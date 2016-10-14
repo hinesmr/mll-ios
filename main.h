@@ -17,6 +17,8 @@
 @property (strong, nonatomic) UIWindow *window;
 @property (strong, nonatomic) mica *couch;
 @property (strong, nonatomic) NSString * token;
+@property (strong, nonatomic) NSString * stop_now;
+@property (strong, nonatomic) NSString * start_now;
 
 @end
 #endif

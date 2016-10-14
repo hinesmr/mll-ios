@@ -12,6 +12,8 @@ import sys
 import codecs
 from threading import current_thread
 
+print "1 Starting up MLL: " + str(sys.argv)
+
 class MobileInternet(object) :
     def __init__(self, couch) :
         self.couch = couch
@@ -19,6 +21,7 @@ class MobileInternet(object) :
     def connected(self) :
         return self.couch.connected().UTF8String()
 
+print "2 Starting up MLL"
 try :
     from pyobjus import autoclass, objc_f, objc_str as String, objc_b as Boolean
     CouchBaseClass = autoclass('mica')
@@ -28,6 +31,7 @@ except ImportError, e :
     couch = False
     print "Warning: pyobjus could not be imported"
 
+print "3 Starting up MLL"
 cwd = re.compile(".*\/").search(os.path.realpath(__file__)).group(0)
 sys.path = [cwd, cwd + "mica/"] + sys.path
 #print "Path is: " + str(sys.path)
