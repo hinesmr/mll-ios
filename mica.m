@@ -185,6 +185,8 @@
         //[CBLManager enableLogging:@"CBLRouterVerbose"];
         //[CBLManager enableLogging:@"Router"];
         //[CBLManager enableLogging:@"RouterVerbose"];
+        //[CBLManager enableLogging:@"CBLRestPuller"];
+        //[CBLManager enableLogging:@"CBLRestPullerVerbose"];
 
 	self->reachability = [Reachability reachabilityForInternetConnection];
 	[self->reachability startNotifier];
