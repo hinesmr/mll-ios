@@ -19,6 +19,7 @@
 @property (strong, nonatomic) NSString * token;
 @property (strong, nonatomic) NSString * stop_now;
 @property (strong, nonatomic) NSString * start_now;
+@property (strong, nonatomic) NSString * pushcheck;
 
 @end
 #endif

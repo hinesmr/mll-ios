@@ -148,6 +148,7 @@ void load_custom_builtin_importer() {
     self.token = nil; 
     self.stop_now = @"no";
     self.start_now = @"no";
+    self.pushcheck = @"no";
     UIUserNotificationType types = UIUserNotificationTypeBadge |
                  UIUserNotificationTypeSound | UIUserNotificationTypeAlert;
     UIUserNotificationSettings *mySettings =
@@ -162,7 +163,10 @@ void load_custom_builtin_importer() {
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
     // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
-    self.stop_now = @"yes";
+    if ([self.pushcheck isEqualToString:@"yes"]) {
+	    NSLog(@"Instructing shutdown, pushcheck: %@", self.pushcheck);
+	    self.stop_now = @"yes";
+    }
     NSLog(@"We will go to inactive, now...");
 }
 
@@ -176,7 +180,10 @@ void load_custom_builtin_importer() {
 - (void)applicationWillEnterForeground:(UIApplication *)application
 {
     NSLog(@"We're about to enter the foreground.....");
-    self.start_now = @"yes";
+    if ([self.pushcheck isEqualToString:@"yes"]) {
+	NSLog(@"Instructing shutdown, pushcheck: %@", self.pushcheck);
+        self.start_now = @"yes";
+    }
     // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
 }
 
@@ -212,11 +219,13 @@ void load_custom_builtin_importer() {
                          ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
                          ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
     //NSLog(@"Did Register for Remote Notifications with Device Token (%@)", stringToken);
+    self.pushcheck = @"yes";
     self.token = stringToken;
     [self.couch storePushToken];
 }
 
 - (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+    self.pushcheck = @"yes";
     NSLog(@"Failed to register for remote notifications: %@, %@", error, error.localizedDescription);
 }
 
