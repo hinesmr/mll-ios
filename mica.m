@@ -158,10 +158,10 @@
         self->mappers = [[NSMutableDictionary alloc] init];
         self->reducers = [[NSMutableDictionary alloc] init];
 
-        //[CBLManager enableLogging:@"Sync"];
-        //[CBLManager enableLogging:@"SyncVerbose"];
-        //[CBLManager enableLogging:@"ChangeTracker"];
-        //[CBLManager enableLogging:@"ChangeTrackerVerbose"];
+        [CBLManager enableLogging:@"Sync"];
+        [CBLManager enableLogging:@"SyncVerbose"];
+        [CBLManager enableLogging:@"ChangeTracker"];
+        [CBLManager enableLogging:@"ChangeTrackerVerbose"];
         //[CBLManager enableLogging:@"View"];
         //[CBLManager enableLogging:@"ViewVerbose"];
         //[CBLManager enableLogging:@"WS"];
@@ -599,7 +599,7 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     return props;
 }
 
-- (void) _storePushToken: (NSString *) dbname 
+- (NSString *) _storePushToken: (NSString *) dbname 
 {
     DBCHECK();
     AppDelegate * appDelegate = [[UIApplication sharedApplication] delegate];
@@ -649,6 +649,7 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
        }
     }
     //NSLog(@"Token storage complete.");
+    return @"Done"; //no effect
 }
 
 - (void) storePushToken
@@ -957,9 +958,48 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     [self updateReplication : notification.object : @"push"];
 }
 
-- (int)replicate:(NSString *) dbname : (NSString *) server : (NSString *) filterparams
+- (int)filters:(NSString *) dbname : (NSString *) filterparams
 {
     DBCHECK();
+
+    NSLog(@"Want to set filters for DB %@...", dbname);
+
+    if ([self->filters valueForKey:dbname] != nil) {
+        [self->filters removeObjectForKey:dbname];
+    }
+
+    [self->filters setValue:filterparams forKey:dbname];
+
+    CBLReplication *pull = [self->pulls valueForKey: dbname];
+
+    if (pull == nil) {
+        NSLog(@"No pulls, yet. Moving along");
+    }
+
+    NSMutableDictionary * params = [[mica toJSON:filterparams] mutableCopy];
+    NSString *name = [params valueForKey:@"name"];
+    NSLog(@"Removing name from params...");
+    [params removeObjectForKey:@"name"];
+    NSLog(@"Setting params...");
+    [pull setFilters : params : name]; 
+
+    NSLog(@"Stopping pull...");
+    [pull stop];
+    NSLog(@"Starting pull...");
+    [pull start];
+
+    NSLog(@"Filter update complete");
+    return 0;
+}
+- (int)replicate:(NSString *) dbname : (NSString *) server
+{
+    DBCHECK();
+
+    NSString * filterparams = [self->filters valueForKey:dbname];
+    if (filterparams == nil) {
+        NSLog(@"Missing filters for db %@.", dbname);
+        return -1;
+    }
 
     if ([self->pushes valueForKey: dbname] != nil && [self->pulls valueForKey: dbname]) {
         NSLog(@"Database: %@ already replicating.", dbname);
@@ -990,9 +1030,9 @@ FINISH(nil, @"Could not find database: %@", dbname);                    \
     push.continuous = pull.continuous = YES;
 
     NSMutableDictionary * params = [[mica toJSON:filterparams] mutableCopy];
-    [pull setFilter: [params valueForKey:@"name"]];
+    pull.filter = [params valueForKey:@"name"];
     [params removeObjectForKey:@"name"];
-    [pull setFilterParams: params];
+    pull.filterParams = params;
 
     [pull start];
     [push start];
